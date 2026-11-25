@@ -45,6 +45,9 @@ input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--a
 select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%2366756f' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
 .native{display:none!important}
+#brk{margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,.35);font-size:14px;opacity:.95}
+#brk .bk{display:flex;justify-content:space-between;gap:12px;line-height:1.6}
+#brk .bk.h{display:block;font-weight:700;margin-bottom:2px}
 .pick{display:block;width:100%;min-height:46px;border:1px solid var(--line);border-radius:14px;background:var(--card);
   padding:10px 36px 10px 14px;text-align:left;font-size:16px;line-height:1.35;cursor:pointer;position:relative;touch-action:manipulation;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%2366756f' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
@@ -179,7 +182,7 @@ footer .link{font-size:13px}
   <section class="stats" aria-live="polite">
     <div class="stat"><small>รายการ</small><b id="sCount">–</b></div>
     <div class="stat"><small>จำนวนชิ้น</small><b id="sQty">–</b></div>
-    <div class="stat hero"><small>ยอดรวม</small><b id="sTotal">–</b></div>
+    <div class="stat hero"><small id="sTotalLbl">ยอดรวม</small><b id="sTotal">–</b><div id="brk" hidden></div></div>
   </section>
   <div id="chips"></div>
   <div id="list"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
@@ -325,7 +328,8 @@ function card(r){
     (meta.length?'<div class="meta">'+meta.join("")+'</div>':'')+calc+'</div>'+
     '<div class="amt"><b>'+(r.amt==null?"–":"฿"+nf.format(r.amt))+'</b></div></article>';
 }
-var renderTok = 0;
+var renderTok = 0, visTotal = 0;
+function vis(r){ return r.amt==null || r.amt > 0; }
 /* własne listy wyboru (natywny <select> na iOS gubi dotyk) */
 var PICKS = ["fShop","fReceipt","fSort"], pickBtn = {};
 function syncPicks(){
@@ -363,11 +367,23 @@ $("sheetBg").addEventListener("click", function(e){ if (e.target === this) close
 document.addEventListener("keydown", function(e){ if (e.key === "Escape") closeSheet(); });
 function render(){
   syncPicks(); readUI();
-  var res = filtered(), total = 0, qty = 0;
-  res.forEach(function(r){ total += r.amt||0; qty += r.qty||0; });
-  $("sCount").textContent = res.length.toLocaleString("th-TH") + (res.length!==rows.length ? " / " + rows.length.toLocaleString("th-TH") : "");
+  var all = filtered(), total = 0, qty = 0;
+  all.forEach(function(r){ total += r.amt||0; });          // suma wlicza rabaty i gratisy – zgodna z paragonami
+  var res = all.filter(vis);                               // lista pokazuje tylko pozycje > 0
+  res.forEach(function(r){ qty += r.qty||0; });
+  $("sCount").textContent = res.length.toLocaleString("th-TH") + (res.length!==visTotal ? " / " + visTotal.toLocaleString("th-TH") : "");
   $("sQty").textContent = nq.format(qty);
   $("sTotal").textContent = "฿" + nf.format(total);
+  var gross = 0, disc = 0, filt = !!(F.q || F.shop || F.rc);
+  all.forEach(function(r){ var a = r.amt||0; if (a > 0) gross += a; else if (a < 0) disc += a; });
+  var lbl = F.rc ? "ยอดรวม (จ่ายจริง)" : (F.q ? "ยอดรวมรายการที่แสดง" : "ยอดรวม"), bh = "";
+  if (filt && disc < 0){
+    if (F.rc){ var o = $("fReceipt").selectedOptions[0].textContent.split(" · ")[0]; bh += '<div class="bk h">ใบเสร็จ '+esc(o)+'</div>'; }
+    bh += '<div class="bk"><span>'+(F.q?"สินค้า (ก่อนลด)":"สินค้า (ก่อนลด)")+'</span><span>฿'+nf.format(gross)+'</span></div>'+
+          '<div class="bk"><span>'+(F.q?"ส่วนลดที่เกี่ยวข้อง":"ส่วนลด")+'</span><span>−฿'+nf.format(-disc)+'</span></div>';
+    if (F.q) lbl = "สุทธิ (หลังส่วนลด)";
+  } else if (F.q) lbl = "ยอดรวมรายการที่แสดง";
+  $("sTotalLbl").textContent = lbl; $("brk").innerHTML = bh; $("brk").hidden = !bh;
   var list = $("list"), part = res.slice(0,shown);
   var tok = ++renderTok, FIRST = 20;
   list.innerHTML = part.slice(0,FIRST).map(card).join("");
@@ -406,7 +422,7 @@ function fillReceipts(){
   rows.forEach(function(r){
     if (r.shop !== shop) return;
     var o = g[r.key]; if (!o){ o = g[r.key] = {ms:r.ms, tm:r.tm, n:0, sum:0, key:r.key}; ord.push(o); }
-    o.n++; o.sum += (r.amt||0);
+    if (vis(r)) o.n++; o.sum += (r.amt||0);
   });
   ord.sort(function(a,b){ return ((a.ms||0)-(b.ms||0)) || (a.tm<b.tm?-1:a.tm>b.tm?1:0); });
   var money = new Intl.NumberFormat("th-TH",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -429,7 +445,7 @@ function init(){
     if (mx!==null) sub0 += " · ล่าสุด "+dfm.format(mx);
     $("sub").textContent = sub0; return;
   }
-  lastSig = sig;
+  lastSig = sig; visTotal = rows.filter(vis).length;
   var shops = {}, minMs=null, maxMs=null;
   rows.forEach(function(r){
     if(r.shop){ var o=shops[r.shop]||(shops[r.shop]={first:Infinity,days:{}}); if(r.ms!=null){ o.days[r.key]=1; if(r.ms<o.first) o.first=r.ms; } }
