@@ -45,6 +45,11 @@ input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--a
 select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%2366756f' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
 .native{display:none!important}
+#clearAll{background:#d63a3a;border-color:#d63a3a;color:#fff;justify-content:center;touch-action:manipulation}
+#clearAll[hidden]{display:none}
+#clearAll:active{background:#b92d2d}
+#clearAll svg{width:22px;height:22px;stroke-width:2.6}
+.btn{min-width:84px;justify-content:center}
 #brk{margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,.35);font-size:14px;opacity:.95}
 #brk .bk{display:flex;justify-content:space-between;gap:12px;line-height:1.6}
 #brk .bk.h{display:block;font-weight:700;margin-bottom:2px}
@@ -146,6 +151,7 @@ footer .link{font-size:13px}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
         <input id="q" type="search" placeholder="ค้นหาชื่อสินค้า…" enterkeyhint="search" autocomplete="off" aria-label="ค้นหาชื่อสินค้า">
       </label>
+      <button class="btn" id="clearAll" type="button" hidden aria-label="ล้างตัวกรองทั้งหมด" title="ล้างตัวกรองทั้งหมด"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       <button class="btn" id="btnFilter" aria-expanded="false" aria-controls="panel">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
         <span class="lbl">ตัวกรอง</span><span class="dot" id="dot">0</span>
@@ -412,6 +418,7 @@ function chips(){
     b.onclick = function(){ x.clear(); shown=PAGE; render(); };
     box.appendChild(b);
   });
+  $("clearAll").hidden = !c.length;
   var dot = $("dot"), n = c.filter(function(x){return x.label.indexOf("ค้นหา")!==0}).length;
   dot.textContent = n; dot.className = "dot"+(n?" on":"");
 }
@@ -475,7 +482,7 @@ $("fShop").addEventListener("change",function(){ fillReceipts(); });
 $("btnFilter").onclick = function(){
   var open = $("panel").hidden; $("panel").hidden = !open; this.setAttribute("aria-expanded", String(open));
 };
-$("reset").onclick = function(){
+$("clearAll").onclick = $("reset").onclick = function(){
   ["q","fShop","fReceipt","fFrom","fTo","pMin","pMax","aMin","aMax"].forEach(function(id){ $(id).value=""; });
   fillReceipts();
   $("fSort").value="orig"; shown=PAGE; render();
