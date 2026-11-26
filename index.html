@@ -455,12 +455,12 @@ function init(){
   lastSig = sig; visTotal = rows.filter(vis).length;
   var shops = {}, minMs=null, maxMs=null;
   rows.forEach(function(r){
-    if(r.shop){ var o=shops[r.shop]||(shops[r.shop]={first:Infinity,days:{}}); if(r.ms!=null){ o.days[r.key]=1; if(r.ms<o.first) o.first=r.ms; } }
+    if(r.shop){ var o=shops[r.shop]||(shops[r.shop]={last:-Infinity,lt:"",days:{}}); if(r.ms!=null){ o.days[r.key]=1; if(r.ms>o.last||(r.ms===o.last&&r.tm>o.lt)){ o.last=r.ms; o.lt=r.tm; } } }
     if(r.ms!=null){ if(minMs===null||r.ms<minMs) minMs=r.ms; if(maxMs===null||r.ms>maxMs) maxMs=r.ms; }});
   var sel = $("fShop"), cur = sel.value;
   var dshort = function(ms){ return dfs.format(ms); };
   setOpts(sel, '<option value="">ทุกร้านค้า</option>' + Object.keys(shops).sort(function(a,b){
-    var d = shops[a].first - shops[b].first; return d || coll.compare(a,b);
+    var x=shops[a], y=shops[b], d = y.last - x.last; if (d) return d; if (x.lt!==y.lt) return x.lt<y.lt?1:-1; return coll.compare(a,b);
   }).map(function(s){
     var n = Object.keys(shops[s].days).length;
     return '<option value="'+esc(s)+'">'+esc(s)+' ('+n+' ใบเสร็จ)</option>';
