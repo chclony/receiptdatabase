@@ -112,6 +112,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .meta{display:flex;flex-wrap:wrap;gap:4px 12px;color:var(--muted);font-size:13.5px;margin-top:3px}
 .calc{margin-top:6px;font-size:15px;color:var(--ink);font-variant-numeric:tabular-nums}
 .calc .x{color:var(--muted)}
+.calc .old{color:var(--muted);text-decoration:line-through;text-decoration-thickness:1.5px}
+.calc .real{color:var(--ink);font-weight:700}
 .amt{text-align:right;flex:none;min-width:92px}
 .amt b{display:block;font-size:19px;font-variant-numeric:tabular-nums;color:var(--price)}
 #more{display:block;margin:14px auto;height:46px;padding:0 22px;border-radius:14px;border:1px solid var(--line);
@@ -251,6 +253,12 @@ function parse(matrix){
     var tm = r[6]==null ? "" : String(r[6]).trim(), shp = r[1]==null?"":String(r[1]).trim();
     out.push({ i:out.length, ms:ms, tm:tm, key:(ms==null?"":ms)+"|"+shp+"|"+tm, shop:r[1]==null?"":String(r[1]).trim(), name:name,
       low:name.toLowerCase(), qty:num(r[3]), price:num(r[4]), amt:num(r[5]) });
+    var o = out[out.length-1];
+    /* cena jednostkowa realnie zapłacona: gdy ilość × cena ≠ kwota (rabat), pokaż kwota / ilość */
+    if (o.qty>0 && o.price!=null && o.amt>0 && Math.abs(o.qty*o.price-o.amt)>0.005){
+      o.orig = o.price; o.price = o.amt/o.qty;
+      o.approx = Math.abs(Math.round(o.price*100)/100*o.qty-o.amt)>0.005;
+    }
   }
   return out;
 }
@@ -325,7 +333,8 @@ function hl(name){
 function card(r){
   var calc = "";
   if (r.qty!=null && r.price!=null){
-    calc = '<div class="calc">'+nq.format(r.qty)+' <span class="x">×</span> ฿'+nf.format(r.price)+'</div>';
+    calc = '<div class="calc">'+nq.format(r.qty)+' <span class="x">×</span> '+
+      (r.orig!=null ? '<s class="old">฿'+nf.format(r.orig)+'</s> <b class="real">'+(r.approx?'≈':'')+'฿'+nf.format(r.price)+'</b>' : '฿'+nf.format(r.price))+'</div>';
   } else if (r.price!=null){ calc = '<div class="calc">฿'+nf.format(r.price)+' <span class="x">/ หน่วย</span></div>'; }
   var meta = [];
   if (r.ms!=null) meta.push('<span>'+dfm.format(r.ms)+'</span>');
